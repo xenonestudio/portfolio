@@ -46,7 +46,6 @@ export default function App() {
     if (formState.name && formState.email && formState.message) {
       setIsSending(true);
       try {
-        // Save contact details in Firestore collection 'contacts'
         await addDoc(collection(db, 'contacts'), {
           name: formState.name,
           email: formState.email,
@@ -54,7 +53,6 @@ export default function App() {
           createdAt: serverTimestamp()
         });
 
-        // Track custom conversion event in Analytics
         trackEvent('contact_form_success', { email: formState.email });
 
         setIsSent(true);
@@ -229,6 +227,7 @@ export default function App() {
             </div>
           </div>
 
+          {/* Call to Actions (Hero Buttons) */}
           <div style={{
             display: 'flex',
             gap: '1rem',
@@ -255,6 +254,29 @@ export default function App() {
               <PhoneCall size={16} />
               <span>Contrátame</span>
             </a>
+            
+            <a 
+              href="/portfolio/cv.pdf" 
+              target="_blank" 
+              rel="noreferrer"
+              onClick={() => trackEvent('cta_click', { cta: 'download_cv_pdf' })}
+              style={{
+                background: 'rgba(255, 255, 255, 0.03)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                color: 'var(--color-text-primary)',
+                fontWeight: 500,
+                padding: '0.85rem 1.75rem',
+                borderRadius: '8px',
+                fontSize: '0.95rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <FileText size={16} />
+              <span>Descargar CV (PDF)</span>
+            </a>
+
             <a 
               href="https://www.linkedin.com/in/lexsank/" 
               target="_blank" 
@@ -276,7 +298,7 @@ export default function App() {
                 gap: '8px'
               }}
             >
-              <FileText size={16} />
+              <LinkedinIcon size={16} />
               <span>Ver LinkedIn</span>
             </a>
           </div>
