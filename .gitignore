@@ -1,0 +1,8 @@
+node_modules
+dist
+.env
+.oxlintrc.json
+deploy.py
+find_lucide_names.py
+foto.png
+gemini-code-1783962911591.md
