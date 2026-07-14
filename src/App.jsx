@@ -10,11 +10,10 @@ import {
   MapPin,
   Sparkles,
   PhoneCall,
-  Send,
-  CheckCircle,
-  Award,
-  Navigation
+  Send
 } from 'lucide-react';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db, trackEvent } from './firebase';
 import Terminal from './Terminal';
 import BentoGrid from './BentoGrid';
 import Timeline from './Timeline';
@@ -40,16 +39,37 @@ const LinkedinIcon = ({ size = 20 }) => (
 export default function App() {
   const [formState, setFormState] = useState({ name: '', email: '', message: '' });
   const [isSent, setIsSent] = useState(false);
+  const [isSending, setIsSending] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (formState.name && formState.email && formState.message) {
-      setIsSent(true);
-      setTimeout(() => {
-        setIsSent(false);
+      setIsSending(true);
+      try {
+        // Save contact details in Firestore collection 'contacts'
+        await addDoc(collection(db, 'contacts'), {
+          name: formState.name,
+          email: formState.email,
+          message: formState.message,
+          createdAt: serverTimestamp()
+        });
+
+        // Track custom conversion event in Analytics
+        trackEvent('contact_form_success', { email: formState.email });
+
+        setIsSent(true);
         setFormState({ name: '', email: '', message: '' });
-      }, 3000);
+        setTimeout(() => setIsSent(false), 3000);
+      } catch (error) {
+        console.error("Error saving contact message to Firestore:", error);
+      } finally {
+        setIsSending(false);
+      }
     }
+  };
+
+  const trackSocialClick = (platform) => {
+    trackEvent('social_click', { platform });
   };
 
   return (
@@ -86,10 +106,22 @@ export default function App() {
             <a href="#contact">Contacto</a>
           </nav>
           <div style={{ display: 'flex', gap: '12px' }}>
-            <a href="https://github.com/xenonestudio" target="_blank" rel="noreferrer" style={{ color: 'var(--color-text-secondary)' }}>
+            <a 
+              href="https://github.com/xenonestudio" 
+              target="_blank" 
+              rel="noreferrer" 
+              onClick={() => trackSocialClick('github')}
+              style={{ color: 'var(--color-text-secondary)' }}
+            >
               <GithubIcon size={20} />
             </a>
-            <a href="https://www.linkedin.com/in/lexsank/" target="_blank" rel="noreferrer" style={{ color: 'var(--color-text-secondary)' }}>
+            <a 
+              href="https://www.linkedin.com/in/lexsank/" 
+              target="_blank" 
+              rel="noreferrer" 
+              onClick={() => trackSocialClick('linkedin')}
+              style={{ color: 'var(--color-text-secondary)' }}
+            >
               <LinkedinIcon size={20} />
             </a>
           </div>
@@ -203,33 +235,47 @@ export default function App() {
             flexWrap: 'wrap',
             justifyContent: 'center'
           }}>
-            <a href="#contact" className="glow-cyan" style={{
-              background: 'linear-gradient(135deg, var(--accent-cyan), #0077ff)',
-              color: '#000',
-              fontWeight: 600,
-              padding: '0.85rem 1.75rem',
-              borderRadius: '8px',
-              fontSize: '0.95rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              boxShadow: '0 4px 15px rgba(0, 240, 255, 0.2)'
-            }}>
+            <a 
+              href="#contact" 
+              className="glow-cyan" 
+              onClick={() => trackEvent('cta_click', { cta: 'contract_me_hero' })}
+              style={{
+                background: 'linear-gradient(135deg, var(--accent-cyan), #0077ff)',
+                color: '#000',
+                fontWeight: 600,
+                padding: '0.85rem 1.75rem',
+                borderRadius: '8px',
+                fontSize: '0.95rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                boxShadow: '0 4px 15px rgba(0, 240, 255, 0.2)'
+              }}
+            >
               <PhoneCall size={16} />
               <span>Contrátame</span>
             </a>
-            <a href="https://www.linkedin.com/in/lexsank/" target="_blank" rel="noreferrer" style={{
-              background: 'rgba(255, 255, 255, 0.03)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              color: 'var(--color-text-primary)',
-              fontWeight: 500,
-              padding: '0.85rem 1.75rem',
-              borderRadius: '8px',
-              fontSize: '0.95rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}>
+            <a 
+              href="https://www.linkedin.com/in/lexsank/" 
+              target="_blank" 
+              rel="noreferrer" 
+              onClick={() => {
+                trackSocialClick('linkedin_hero');
+                trackEvent('cta_click', { cta: 'linkedin_hero' });
+              }}
+              style={{
+                background: 'rgba(255, 255, 255, 0.03)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                color: 'var(--color-text-primary)',
+                fontWeight: 500,
+                padding: '0.85rem 1.75rem',
+                borderRadius: '8px',
+                fontSize: '0.95rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
               <FileText size={16} />
               <span>Ver LinkedIn</span>
             </a>
@@ -403,6 +449,7 @@ export default function App() {
             <button
               type="submit"
               className="glow-cyan"
+              disabled={isSending}
               style={{
                 background: 'linear-gradient(135deg, var(--accent-cyan), #0077ff)',
                 color: '#000',
@@ -411,17 +458,18 @@ export default function App() {
                 padding: '0.85rem',
                 borderRadius: '6px',
                 fontSize: '0.95rem',
-                cursor: 'pointer',
+                cursor: isSending ? 'not-allowed' : 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '8px',
                 marginTop: '0.5rem',
-                transition: 'var(--transition-smooth)'
+                transition: 'var(--transition-smooth)',
+                opacity: isSending ? 0.7 : 1
               }}
             >
               <Send size={16} />
-              <span>{isSent ? 'Mensaje Enviado ✓' : 'Enviar Mensaje'}</span>
+              <span>{isSent ? 'Mensaje Enviado ✓' : isSending ? 'Enviando...' : 'Enviar Mensaje'}</span>
             </button>
           </form>
         </div>
@@ -449,8 +497,8 @@ export default function App() {
             <div>&copy; {new Date().getFullYear()} Xenón Estudio. Todos los derechos reservados.</div>
           </div>
           <div style={{ display: 'flex', gap: '1.5rem' }}>
-            <a href="https://github.com/xenonestudio" target="_blank" rel="noreferrer">GitHub</a>
-            <a href="https://www.linkedin.com/in/lexsank/" target="_blank" rel="noreferrer">LinkedIn</a>
+            <a href="https://github.com/xenonestudio" target="_blank" rel="noreferrer" onClick={() => trackSocialClick('footer_github')}>GitHub</a>
+            <a href="https://www.linkedin.com/in/lexsank/" target="_blank" rel="noreferrer" onClick={() => trackSocialClick('footer_linkedin')}>LinkedIn</a>
             <a href="mailto:lexsank@gmail.com">lexsank@gmail.com</a>
           </div>
         </div>

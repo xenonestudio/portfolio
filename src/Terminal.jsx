@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { trackEvent } from './firebase';
 
 const COMMANDS = {
   help: [
@@ -83,6 +84,11 @@ export default function Terminal() {
     if (e.key === 'Enter') {
       const trimmedInput = input.trim().toLowerCase();
       const newHistory = [...history, `guest@xenon-os:~$ ${input}`];
+
+      // Track event in Firebase Analytics
+      if (trimmedInput !== '') {
+        trackEvent('terminal_command', { command: trimmedInput });
+      }
 
       if (trimmedInput === 'clear') {
         setHistory([]);
